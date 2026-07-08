@@ -28,7 +28,7 @@ export class UserAuthService {
     private emailService: EmailService,
     private employeeService: EmployeeService,
     private notificationService: NotificationService,
-  ) {}
+  ) { }
 
   async createCompanyUser({ payload }: { payload: CreateUserDto }) {
     try {
@@ -223,6 +223,7 @@ export class UserAuthService {
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
       if (error instanceof BadRequestException) throw error;
+      console.log(error);
       throw new InternalServerErrorException(error);
     }
   }
