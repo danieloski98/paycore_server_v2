@@ -3,17 +3,22 @@ import { AppModule } from './app.module';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import morgan from 'morgan';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { join } from 'path';
 
 
 async function bootstrap() {
-  const logger = new Logger();
-  const app = await NestFactory.create(AppModule, {
+  const logger = new Logger('Nest Application', { timestamp: true });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
   });
   app.useGlobalPipes(new ValidationPipe({
     transform: true,
   }));
   app.enableCors();
   app.use(morgan('combined'));
+
+  app.useStaticAssets(join(__dirname, '..', 'public'));
+  app.setBaseViewsDir(join(__dirname, '..', 'views'));
 
   // swagger setup
   const config = new DocumentBuilder()
