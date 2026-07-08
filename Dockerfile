@@ -7,7 +7,7 @@ WORKDIR /app
 RUN apk add --no-cache python3 make g++ openssl
 
 # Copy package files
-COPY package.json yarn.lock ./
+COPY package.json yarn.lock tsconfig.json ./
 
 # Install dependencies
 RUN yarn install --frozen-lockfile
@@ -33,7 +33,7 @@ WORKDIR /app
 RUN apk add --no-cache dumb-init
 
 # Copy package files
-COPY package.json yarn.lock ./
+COPY package.json yarn.lock tsconfig.json ./
 
 # Install production dependencies only
 RUN yarn install --frozen-lockfile --production=true && yarn cache clean
