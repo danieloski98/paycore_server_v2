@@ -13,6 +13,7 @@ import {
   FileInterceptor,
   FilesInterceptor,
 } from '@nestjs/platform-express';
+import * as os from 'os';
 import {
   ApiTags,
   ApiConsumes,
@@ -31,7 +32,7 @@ export class UploadController {
   constructor(private readonly uploadService: UploadService) {}
 
   @Post('single')
-  @UseInterceptors(FileInterceptor('files', { dest: 'public/uploads'}))
+  @UseInterceptors(FileInterceptor('files', { dest: os.tmpdir() }))
   @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {
@@ -68,7 +69,7 @@ export class UploadController {
   }
 
   @Post('multiple')
-  @UseInterceptors(FilesInterceptor('files', 10, { dest: 'public/uploads'}))
+  @UseInterceptors(FilesInterceptor('files', 10, { dest: os.tmpdir() }))
   @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {
