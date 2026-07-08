@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   app:
@@ -30,6 +30,8 @@ services:
       - PAYSTACK_SECRET_KEY=${PAYSTACK_SECRET_KEY}
       - PAYSTACK_TEST_PUBLIC_KEY=${PAYSTACK_TEST_PUBLIC_KEY}
       - PAYSTACK_TEST_SECRET_KEY=${PAYSTACK_TEST_SECRET_KEY}
+      - RESEND_KEY=${RESEND_KEY}
+      - REDIS_URL=${REDIS_URL}
     restart: unless-stopped
     networks:
       - paycore-network
