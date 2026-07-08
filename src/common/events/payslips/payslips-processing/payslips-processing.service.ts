@@ -2,7 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { PrismaService } from 'src/common/prisma/prisma.service';
-import { MonnifyService } from 'src/common/services/monnify/monnify.service';
 import { PayslipStatus } from 'generated/prisma/enums';
 
 @Processor('payslip-processing')
@@ -12,7 +11,6 @@ export class PayslipsProcessingService extends WorkerHost {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly monnifyService: MonnifyService,
   ) {
     super();
   }
@@ -96,15 +94,15 @@ export class PayslipsProcessingService extends WorkerHost {
 
       // Send payment via Monnify disbursement
       const reference = `PAYSLIP-${payslipId}-${Date.now()}`;
-      await this.monnifyService.initiateSingleTransfer({
-        amount: payoutAmount,
-        reference,
-        narration: `Salary payment for payroll ${payslip.payrollId}`,
-        destinationBankCode: bankDetails.bankCode,
-        destinationAccountNumber: bankDetails.accountNumber,
-        destinationAccountName: bankDetails.accountName,
-        async: true,
-      });
+      // await this.monnifyService.initiateSingleTransfer({
+      //   amount: payoutAmount,
+      //   reference,
+      //   narration: `Salary payment for payroll ${payslip.payrollId}`,
+      //   destinationBankCode: bankDetails.bankCode,
+      //   destinationAccountNumber: bankDetails.accountNumber,
+      //   destinationAccountName: bankDetails.accountName,
+      //   async: true,
+      // });
 
       // Update payslip status to PAID
       await this.prisma.payslip.update({
