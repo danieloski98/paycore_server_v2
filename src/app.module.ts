@@ -25,6 +25,7 @@ import { createKeyv } from '@keyv/redis';
 import { TransactionModule } from './modules/transaction/transaction.module';
 import { PayrollModule } from './modules/payroll/payroll.module';
 import { PaymentModule } from './modules/payment/payment.module';
+import { UploadModule } from './common/services/upload/upload.module';
 
 
 const logger = new Logger();
@@ -34,8 +35,8 @@ const logger = new Logger();
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: ['.env', '.env.development'],
-    }),  
-     JwtModule.registerAsync({
+    }),
+    JwtModule.registerAsync({
       global: true,
       useFactory: async (configService: ConfigService) => ({
         secret: configService.get('JWT_SECRET'),
@@ -43,7 +44,7 @@ const logger = new Logger();
       }),
       inject: [ConfigService],
     }),
-     CacheModule.registerAsync({
+    CacheModule.registerAsync({
       isGlobal: true,
       useFactory: async (configService: ConfigService) => ({
         stores: [createKeyv(`${configService.get('REDIS_URL')}`)],
@@ -51,7 +52,7 @@ const logger = new Logger();
       inject: [ConfigService],
     }),
     ScheduleModule.forRoot(),
-     BullModule.forRootAsync({
+    BullModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: async (config: ConfigService) => ({
@@ -62,7 +63,7 @@ const logger = new Logger();
         },
       }),
     }),
-     BullModule.registerQueue({
+    BullModule.registerQueue({
       name: 'payslip-creation',
     }),
     BullModule.registerQueue({
@@ -84,8 +85,9 @@ const logger = new Logger();
     TransactionModule,
     PayrollModule,
     PaymentModule,
+    UploadModule,
   ],
   controllers: [AppController],
   providers: [AppService, EmailService, PrismaService, OtpService, PayslipsProcessingService, PayslipsCreationService, PaystackService],
 })
-export class AppModule {}
+export class AppModule { }
