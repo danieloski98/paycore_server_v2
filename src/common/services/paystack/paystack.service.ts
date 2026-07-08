@@ -52,7 +52,7 @@ export class PaystackService implements OnModuleInit {
     this.baseUrl =
       this.configService.get<string>('PAYSTACK_BASE_URL') ||
       'https://api.paystack.co';
-    this.secretKey = this.configService.get<string>('PAYSTACK_SECRET_KEY');
+    this.secretKey = this.configService.get<string>('PAYSTACK_SECRET_KEY') as string;
   }
 
   async onModuleInit() {
@@ -89,7 +89,7 @@ export class PaystackService implements OnModuleInit {
       }
 
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error('Failed to get banks', error?.response?.data);
       throw new BadRequestException(error?.response?.data ?? error?.message);
     }
@@ -119,7 +119,7 @@ export class PaystackService implements OnModuleInit {
       }
 
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(
         'Failed to validate bank details',
         error?.response?.data,
@@ -146,7 +146,7 @@ export class PaystackService implements OnModuleInit {
       }
 
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
       this.logger.log(error?.message, error?.response?.data);
       this.logger.error('Failed to verify transaction', error?.response?.data);
       throw new BadRequestException(error?.response?.data ?? error?.message);
@@ -212,7 +212,7 @@ export class PaystackService implements OnModuleInit {
       }
 
       return transferRes.data;
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(
         'Failed to initiate single transfer',
         error?.response?.data ?? error?.message,
@@ -279,7 +279,7 @@ export class PaystackService implements OnModuleInit {
       }
 
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(
         'Failed to create transaction',
         error?.response?.data ?? error?.message,

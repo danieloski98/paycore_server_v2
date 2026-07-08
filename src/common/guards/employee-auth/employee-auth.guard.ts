@@ -49,7 +49,7 @@ export class EmployeeAuthGuard implements CanActivate {
     }
     req['user'] = user;
     return true;
-   } catch(error) {
+   } catch(error: any) {
       throw new BadGatewayException(error?.message);
    }
   }
