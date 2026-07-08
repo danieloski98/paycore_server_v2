@@ -1,0 +1,320 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model BankDetails {
+  id            String    @id @default(cuid())
+  bankName      String
+  accountNumber String
+  accountName   String
+  bankCode      String
+  employeeId    String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+  isDeleted     Boolean   @default(false)
+  isPrimary     Boolean   @default(false)
+  Employee      Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+}
+
+model Company {
+  id        String     @id @default(cuid())
+  name      String
+  address   String?
+  phone     String?
+  taxId     String?    @unique
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  isActive  Boolean    @default(true)
+  deletedAt DateTime?
+  isDeleted Boolean    @default(false)
+  RCNumber  String?
+  industry  String
+  logo      String
+  creatorId String     @unique
+  User      User       @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  Employee  Employee[]
+  Payroll   Payroll[]
+  Payslip   Payslip[]
+  Wallet    Wallet[]
+}
+
+model Deduction {
+  id          String        @id @default(cuid())
+  amount      Float
+  description String?
+  employeeId  String?
+  payrollId   String?
+  type        DeductionType
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  deletedAt   DateTime?
+  isDeleted   Boolean       @default(false)
+  Employee    Employee?     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  Payroll     Payroll?      @relation(fields: [payrollId], references: [id], onDelete: Cascade)
+}
+
+model Earning {
+  id          String      @id @default(cuid())
+  amount      Float
+  description String?
+  employeeId  String?
+  payrollId   String?
+  type        EarningType
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  deletedAt   DateTime?
+  isDeleted   Boolean     @default(false)
+  Employee    Employee?   @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  Payroll     Payroll?    @relation(fields: [payrollId], references: [id], onDelete: Cascade)
+}
+
+model Employee {
+  id            String        @id @default(cuid())
+  firstName     String
+  lastName      String
+  email         String        @unique
+  phone         String?
+  address       String?
+  position      String
+  department    String?
+  salary        Float
+  taxId         String?       @unique
+  bankAccount   String?
+  startDate     DateTime
+  isActive      Boolean       @default(true)
+  companyId     String
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  deletedAt     DateTime?
+  isDeleted     Boolean       @default(false)
+  emailVerified Boolean       @default(false)
+  password      String?
+  picture       String?
+  BankDetails   BankDetails[]
+  Deduction     Deduction[]
+  Earning       Earning[]
+  Company       Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  Leave         Leave[]
+  Payslip       Payslip[]
+}
+
+model File {
+  id        String    @id @default(cuid())
+  url       String
+  publicId  String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  isDeleted Boolean   @default(false)
+}
+
+model Leave {
+  id          String      @id @default(cuid())
+  employeeId  String
+  type        LeaveType
+  startDate   DateTime
+  endDate     DateTime
+  description String
+  totalDays   Int
+  Status      LeaveStatus
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  deletedAt   DateTime?
+  isDeleted   Boolean     @default(false)
+  companyId   String
+  Employee    Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id         String    @id @default(cuid())
+  title      String
+  message    String
+  companyId  String?
+  employeeId String?
+  isRead     Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
+  isDeleted  Boolean   @default(false)
+}
+
+model Otp {
+  id         String        @id @default(cuid())
+  code       String
+  type       OTP_TYPE      @default(PASSWORD_RESET)
+  userId     String?
+  employeeId String?
+  for        OTP_USER_TYPE
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  deletedAt  DateTime?
+  isDeleted  Boolean       @default(false)
+}
+
+model Payment {
+  id        String        @id @default(cuid())
+  companyId String
+  reference String
+  amount    Float
+  walletId  String
+  status    PaymentStatus @default(PENDING)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  deletedAt DateTime?
+  isDeleted Boolean       @default(false)
+}
+
+model Payroll {
+  id        String        @id @default(cuid())
+  month     Int
+  year      Int
+  status    PayrollStatus @default(PENDING)
+  companyId String
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  deletedAt DateTime?
+  isDeleted Boolean       @default(false)
+  name      String
+  Deduction Deduction[]
+  Earning   Earning[]
+  Company   Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  Payslip   Payslip[]
+
+  @@unique([companyId, month, year])
+}
+
+model Payslip {
+  id          String        @id @default(cuid())
+  employeeId  String
+  payrollId   String
+  basicSalary Float
+  allowances  Float         @default(0)
+  deductions  Float         @default(0)
+  tax         Float         @default(0)
+  netSalary   Float         @default(0)
+  status      PayslipStatus @default(PENDING)
+  paymentDate DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  deletedAt   DateTime?
+  isDeleted   Boolean       @default(false)
+  bankId      String
+  companyId   String
+  Company     Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  Employee    Employee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  Payroll     Payroll       @relation(fields: [payrollId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String
+  role          UserRole  @default(ADMIN)
+  companyId     String?
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime      @updatedAt
+  deletedAt     DateTime?
+  isDeleted     Boolean   @default(false)
+  firstName     String
+  lastName      String
+  emailVerified Boolean   @default(false)
+  picture       String?
+  Company       Company?
+}
+
+model Wallet {
+  id        String    @id @default(cuid())
+  balance   Float
+  companyId String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  isDeleted Boolean   @default(false)
+  currency  Currency  @default(NGN)
+  Company   Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+}
+
+enum Currency {
+  USD
+  NGN
+}
+
+enum DeductionType {
+  TAX
+  PENSION
+  HEALTH_INSURANCE
+  LOAN
+  OTHER
+}
+
+enum DocumentType {
+  DRIVERS_LINCENSE
+}
+
+enum EarningType {
+  BASIC_SALARY
+  ALLOWANCE
+  BONUS
+  OTHER
+}
+
+enum LeaveStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+enum LeaveType {
+  ANNUAL
+  SICK
+  MATERNITY
+  PATERNITY
+  CASUAL
+  PUBLIC_HOLIDAY
+  BEREAVEMENT
+  UNPAID
+  STUDY
+  MARRIAGE
+}
+
+enum OTP_TYPE {
+  PASSWORD_RESET
+}
+
+enum OTP_USER_TYPE {
+  USER
+  EMPLOYEE
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum PayrollStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum PayslipStatus {
+  PENDING
+  PAID
+  FAILED
+}
+
+enum UserRole {
+  ADMIN
+  SUPER_ADMIN
+  HR_MANAGER
+}
