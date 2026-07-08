@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: paycore-server
+    ports:
+      - "4000:4000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - PORT=4000
+      - APP_URL=${APP_URL}
+      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}
+      - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}
+      - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}
+      - FRONTEND_BASE_URL=${FRONTEND_BASE_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - MONNIFY_API_KEY=${MONNIFY_API_KEY}
+      - MONNIFY_BASE_URL=${MONNIFY_BASE_URL}
+      - MONNIFY_CONTRACT_CODE=${MONNIFY_CONTRACT_CODE}
+      - MONNIFY_SECRET_KEY=${MONNIFY_SECRET_KEY}
+      - PAYSTACK_BASE_URL=${PAYSTACK_BASE_URL}
+      - PAYSTACK_PUBLIC_KEY=${PAYSTACK_PUBLIC_KEY}
+      - PAYSTACK_SECRET_KEY=${PAYSTACK_SECRET_KEY}
+      - PAYSTACK_TEST_PUBLIC_KEY=${PAYSTACK_TEST_PUBLIC_KEY}
+      - PAYSTACK_TEST_SECRET_KEY=${PAYSTACK_TEST_SECRET_KEY}
+    restart: unless-stopped
+    networks:
+      - paycore-network
+
+networks:
+  paycore-network:
+    driver: bridge
