@@ -17,7 +17,7 @@ export class LeaveService {
     private employeeService: EmployeeService,
     private emailService: EmailService,
     private notificationService: NotificationService,
-  ) {}
+  ) { }
 
   async createLeave({
     employeeId,
@@ -102,7 +102,7 @@ export class LeaveService {
         total,
         totalPages: Math.ceil(total / limit),
       });
-    } catch (error) {}
+    } catch (error) { }
   }
   async getLeavesByCompanyId(companyId: string, query: PaginatedQuery) {
     try {

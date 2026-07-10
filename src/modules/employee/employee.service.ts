@@ -331,12 +331,7 @@ export class EmployeeService {
                 mode: 'insensitive',
               },
             },
-            {
-              department: {
-                contains: search,
-                mode: 'insensitive',
-              },
-            },
+
           ]
           : undefined,
       };
@@ -354,11 +349,11 @@ export class EmployeeService {
           email: true,
           phone: true,
           position: true,
-          department: true,
           salary: true,
           startDate: true,
           createdAt: true,
           updatedAt: true,
+          department: true,
         },
         skip,
         take: limit ?? 10,
