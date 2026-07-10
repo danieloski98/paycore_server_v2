@@ -26,6 +26,7 @@ import { TransactionModule } from './modules/transaction/transaction.module';
 import { PayrollModule } from './modules/payroll/payroll.module';
 import { PaymentModule } from './modules/payment/payment.module';
 import { UploadModule } from './common/services/upload/upload.module';
+import { DepartmentModule } from './modules/department/department.module';
 
 
 const logger = new Logger();
@@ -86,6 +87,7 @@ const logger = new Logger();
     PayrollModule,
     PaymentModule,
     UploadModule,
+    DepartmentModule,
   ],
   controllers: [AppController],
   providers: [AppService, EmailService, PrismaService, OtpService, PayslipsProcessingService, PayslipsCreationService, PaystackService],
