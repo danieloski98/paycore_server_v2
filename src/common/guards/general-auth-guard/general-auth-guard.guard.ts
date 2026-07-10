@@ -19,11 +19,11 @@ export class GeneralAuthGuardGuard implements CanActivate {
     }
 
     // validate token
-    const validatedToken: { email: string, companyId: string, type: 'EMPLOYEE' } = await this.jwtService.verifyAsync(token, {
+    const validatedToken: { email: string, companyId: string, TYPE: 'EMPLOYEE' | 'USER' } = await this.jwtService.verifyAsync(token, {
       secret: this.configService.get('JWT_SECRET'),
     });
 
-    if (validatedToken.type === 'EMPLOYEE') {
+    if (validatedToken.TYPE === 'EMPLOYEE') {
       const user = await this.databaseService.employee.findFirst({
         where: {
           AND: [
@@ -49,7 +49,7 @@ export class GeneralAuthGuardGuard implements CanActivate {
       return true;
     }
 
-    if (validatedToken.type === 'USER') {
+    if (validatedToken.TYPE === 'USER') {
       const user = await this.databaseService.user.findFirst({
         where: {
           email: validatedToken.email,

@@ -175,6 +175,8 @@ export class UserAuthService {
         },
       });
 
+      this.logger.debug('account', account);
+
       if (!account) {
         throw new NotFoundException('Email or password not found!');
       }
@@ -224,7 +226,7 @@ export class UserAuthService {
       if (error instanceof NotFoundException) throw error;
       if (error instanceof BadRequestException) throw error;
       console.log(error);
-      throw new InternalServerErrorException(error);
+      throw new InternalServerErrorException(error?.message);
     }
   }
 
