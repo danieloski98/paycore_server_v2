@@ -226,7 +226,7 @@ export class EmployeeController {
   }
 
   @Delete(':id/earnings/:earningId')
-  @UseGuards(EmployeeAuthGuard)
+  @UseGuards(UserAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete an employee earning' })
   @ApiParam({ name: 'id', description: 'Employee ID' })
@@ -246,7 +246,7 @@ export class EmployeeController {
   }
 
   @Delete(':id/deductions/:deductionId')
-  @UseGuards(EmployeeAuthGuard)
+  @UseGuards(UserAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete an employee deduction' })
   @ApiParam({ name: 'id', description: 'Employee ID' })
