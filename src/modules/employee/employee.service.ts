@@ -30,7 +30,7 @@ export class EmployeeService {
     private configService: ConfigService,
     private emailService: EmailService,
     private uploadService: UploadService,
-  ) {}
+  ) { }
 
   private async enrichedEmployee(employee: Partial<Employee>) {
     let picture: any = null;
@@ -304,39 +304,40 @@ export class EmployeeService {
       // Build where clause
       const where: Prisma.EmployeeWhereInput = {
         companyId,
+        isDeleted: false,
         OR: search
           ? [
-              {
-                firstName: {
-                  contains: search,
-                  mode: 'insensitive',
-                },
+            {
+              firstName: {
+                contains: search,
+                mode: 'insensitive',
               },
-              {
-                lastName: {
-                  contains: search,
-                  mode: 'insensitive',
-                },
+            },
+            {
+              lastName: {
+                contains: search,
+                mode: 'insensitive',
               },
-              {
-                email: {
-                  contains: search,
-                  mode: 'insensitive',
-                },
+            },
+            {
+              email: {
+                contains: search,
+                mode: 'insensitive',
               },
-              {
-                position: {
-                  contains: search,
-                  mode: 'insensitive',
-                },
+            },
+            {
+              position: {
+                contains: search,
+                mode: 'insensitive',
               },
-              {
-                department: {
-                  contains: search,
-                  mode: 'insensitive',
-                },
+            },
+            {
+              department: {
+                contains: search,
+                mode: 'insensitive',
               },
-            ]
+            },
+          ]
           : undefined,
       };
 
@@ -535,11 +536,10 @@ export class EmployeeService {
         },
       });
 
-      const enrichedEmployee = await this.enrichedEmployee(deletedEmployee);
 
       return new ReturnType({
         success: true,
-        data: enrichedEmployee,
+        data: null,
         message: 'Employee deleted successfully',
       });
     } catch (error: any) {
