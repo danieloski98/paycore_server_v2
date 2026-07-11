@@ -12,6 +12,7 @@ import EmployeeWelcomeEmail, {
 } from 'src/common/templates/employeeWelcome.template';
 import LeaveStatusEmail from 'src/common/templates/leaveStatus.template';
 import { LeaveStatus } from 'generated/prisma/enums';
+import BankDetailsRequestTemplate from 'src/common/templates/bankDetailsRequest.template';
 
 @Injectable()
 export class EmailService {
@@ -178,6 +179,35 @@ export class EmailService {
       this.logger.log(data);
       if (error) {
         this.logger.error('Leave status email error', error);
+      }
+    } catch (error) {
+      throw new InternalServerErrorException(error);
+    }
+  }
+
+  async sendBankDetailsRequestEmail({
+    email,
+    name,
+    companyName,
+  }: {
+    email: string;
+    name: string;
+    companyName: string;
+  }) {
+    try {
+      const { error, data } = await this.resend.emails.send({
+        to: email,
+        subject: 'Action Required: Add your bank details',
+        from: this.supportEmail,
+        react: BankDetailsRequestTemplate({
+          name,
+          companyName,
+          url: `${this.configService.get('FRONTEND_BASE_URL')}/employee/dashboard`,
+        }),
+      });
+      this.logger.log(data);
+      if (error) {
+        this.logger.error('Failed to send bank details request email', error);
       }
     } catch (error) {
       throw new InternalServerErrorException(error);

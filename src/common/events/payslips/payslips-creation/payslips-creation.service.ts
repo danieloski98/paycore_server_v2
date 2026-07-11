@@ -4,11 +4,17 @@ import { IEvent } from '../..';
 import { CreatePayslipDto } from '../dto/CreatePayslipDto';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { EarningType } from 'generated/prisma/enums';
+import { NotificationService } from 'src/common/services/notification/notification.service';
+import { EmailService } from 'src/common/services/email/email.service';
 
 @Injectable()
 export class PayslipsCreationService {
   private logger = new Logger(PayslipsCreationService.name);
-  constructor(private prismaService: PrismaService) {}
+  constructor(
+    private prismaService: PrismaService,
+    private notificationService: NotificationService,
+    private emailService: EmailService,
+  ) { }
 
   @OnEvent(IEvent.PAYSIPLS_CREATION)
   async payslipCreation(data: CreatePayslipDto) {
@@ -24,8 +30,37 @@ export class PayslipsCreationService {
         },
         include: {
           BankDetails: true,
+          Company: true,
         },
       });
+
+      // Find employees without a primary bank account
+      const invalidEmployees = employees.filter((emp) => {
+        return !emp.BankDetails.some((bank) => bank.isPrimary);
+      });
+
+      // Send notifications/emails to invalid employees
+      for (const emp of invalidEmployees) {
+        try {
+          await this.notificationService.sendEmployeeNotification(
+            emp.id,
+            'BANK DETAILS REQUIRED',
+            'Please add your primary bank account details to receive your payroll payments.',
+          );
+
+          await this.emailService.sendBankDetailsRequestEmail({
+            email: emp.email,
+            name: `${emp.firstName} ${emp.lastName}`,
+            companyName: emp.Company.name,
+          });
+        } catch (error) {
+          this.logger.error(
+            `Failed to send bank details alert to employee ${emp.id}`,
+            error,
+          );
+        }
+      }
+
       // filter to employees with a primary bank account
       const validEmployees = employees.filter((emp) => {
         const primaryBank = emp.BankDetails.find((bank) => bank.isPrimary);
@@ -33,6 +68,7 @@ export class PayslipsCreationService {
           this.logger.warn(
             `Employee ${emp.id} has no primary bank account. Skipping.`,
           );
+
           return false;
         }
         return true;
@@ -42,11 +78,27 @@ export class PayslipsCreationService {
         this.logger.error(
           `No valid employees with primary bank accounts for payroll ${data.payrollId}.`,
         );
-        await this.prismaService.payroll.delete({
-          where: {
-            id: data?.payrollId,
-          },
-        });
+
+        if (!data.isExistingPayroll) {
+          await this.prismaService.payroll.delete({
+            where: {
+              id: data?.payrollId,
+            },
+          });
+
+          try {
+            await this.notificationService.sendCompanyNotification(
+              data.companyId,
+              'PAYROLL CANCELLED',
+              'Payroll was cancelled as there was no valid employee with a bank account added',
+            );
+          } catch (notifyError) {
+            this.logger.error(
+              'Failed to send company notification for payroll cancellation',
+              notifyError,
+            );
+          }
+        }
         return;
       }
 

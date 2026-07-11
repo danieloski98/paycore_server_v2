@@ -23,14 +23,16 @@ import { UserAuthGuard } from '../../common/guards/user-auth/user-auth.guard';
 import { PayrollService } from './payroll.service';
 import { CreatePayrollDto } from './dto/CreatePayrollDto';
 import { UpdatePayrollDto } from './dto/UpdatePayrollDto';
+import { AddEmployeesToPayrollDto } from './dto/AddEmployeesToPayrollDto';
 import { PaginatedQuery } from '../../common/classes/PaginatedQuery';
 import { CreateEarningDto } from './dto/CreateEarningDto';
 import { CreateDeductionDto } from './dto/CreateDeductionDto';
 
 @ApiTags('Payroll Management')
+@ApiBearerAuth()
 @Controller('payroll')
 export class PayrollController {
-  constructor(private readonly payrollService: PayrollService) {}
+  constructor(private readonly payrollService: PayrollService) { }
 
   @Post()
   @UseGuards(UserAuthGuard)
@@ -48,6 +50,23 @@ export class PayrollController {
     @GetUser('companyId') companyId: string,
   ) {
     return this.payrollService.createPayroll(companyId, createPayrollDto);
+  }
+
+  @Post(':id/add-employees')
+  @UseGuards(UserAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Add employees to an already existing payroll' })
+  @ApiParam({ name: 'id', description: 'Payroll ID' })
+  @ApiBody({ type: AddEmployeesToPayrollDto })
+  @ApiResponse({ status: 201, description: 'Employees added to payroll successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid input or employees already in payroll' })
+  @ApiResponse({ status: 404, description: 'Payroll or Company not found' })
+  async addEmployeesToPayroll(
+    @Param('id') payrollId: string,
+    @Body() payload: AddEmployeesToPayrollDto,
+    @GetUser('companyId') companyId: string,
+  ) {
+    return this.payrollService.addEmployeesToPayroll(companyId, payrollId, payload);
   }
 
   @Get('company')
