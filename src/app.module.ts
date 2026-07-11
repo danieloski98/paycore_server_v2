@@ -13,6 +13,7 @@ import { OtpService } from './common/services/otp/otp.service';
 import { PayslipsProcessingService } from './common/events/payslips/payslips-processing/payslips-processing.service';
 import { PayslipsCreationService } from './common/events/payslips/payslips-creation/payslips-creation.service';
 import { PaystackService } from './common/services/paystack/paystack.service';
+import { NotificationService } from './common/services/notification/notification.service';
 import { UserAuthModule } from './modules/user-auth/user-auth.module';
 import { EmployeeModule } from './modules/employee/employee.module';
 import { UserModule } from './modules/user/user.module';
@@ -90,6 +91,15 @@ const logger = new Logger();
     DepartmentModule,
   ],
   controllers: [AppController],
-  providers: [AppService, EmailService, PrismaService, OtpService, PayslipsProcessingService, PayslipsCreationService, PaystackService],
+  providers: [
+    AppService,
+    EmailService,
+    PrismaService,
+    OtpService,
+    PayslipsProcessingService,
+    PayslipsCreationService,
+    PaystackService,
+    NotificationService,
+  ],
 })
 export class AppModule { }

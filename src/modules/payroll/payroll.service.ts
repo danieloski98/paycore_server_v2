@@ -10,6 +10,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { NotificationService } from 'src/common/services/notification/notification.service';
 import { CreatePayrollDto } from './dto/CreatePayrollDto';
+import { AddEmployeesToPayrollDto } from './dto/AddEmployeesToPayrollDto';
 import { CompanyService } from '../company/company.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { IEvent } from 'src/common/events';
@@ -34,7 +35,7 @@ export class PayrollService {
     private eventEmitterService: EventEmitter2,
     @InjectQueue('payslip-processing')
     private readonly payslipProcessingQueue: Queue,
-  ) {}
+  ) { }
 
   async createPayroll(companyId: string, payload: CreatePayrollDto) {
     try {
@@ -84,9 +85,9 @@ export class PayrollService {
 
       return new ReturnType({
         message:
-          'Payroll has been created successfully, payslips are been created now',
+          'Payroll is currently been processed, check back in few minutes',
         success: true,
-        data: newPayroll,
+        data: null,
       });
     } catch (error) {
       this.logger.error(error);
@@ -428,7 +429,7 @@ export class PayrollService {
         throw new NotFoundException('Employee not found');
       }
 
-      
+
 
       const payslips = await this.prisma.payslip.findMany({
         where: {
@@ -525,7 +526,7 @@ export class PayrollService {
   ) {
     try {
       await this.companyService.checkCompany(companyId);
-     
+
       const employee = await this.prisma.employee.findFirst({
         where: { id: employeeId, companyId, isDeleted: false, isActive: true },
       });
@@ -608,7 +609,7 @@ export class PayrollService {
   ) {
     try {
       await this.companyService.checkCompany(companyId);
-    
+
       const employee = await this.prisma.employee.findFirst({
         where: { id: employeeId, companyId, isDeleted: false, isActive: true },
       });
@@ -1199,5 +1200,95 @@ export class PayrollService {
     }
   }
 
-  
+  async addEmployeesToPayroll(
+    companyId: string,
+    payrollId: string,
+    payload: AddEmployeesToPayrollDto,
+  ) {
+    try {
+      await this.companyService.checkCompany(companyId);
+
+      const payroll = await this.prisma.payroll.findFirst({
+        where: {
+          id: payrollId,
+          companyId,
+          isDeleted: false,
+        },
+      });
+
+      if (!payroll) {
+        throw new NotFoundException('Payroll not found');
+      }
+
+      if (
+        payroll.status === PayrollStatus.COMPLETED ||
+        payroll.status === PayrollStatus.PROCESSING
+      ) {
+        throw new BadRequestException(
+          'Cannot add employees to a payroll that is processing or completed',
+        );
+      }
+
+      const findEmployees = await this.prisma.employee.findMany({
+        where: {
+          id: { in: payload.employeeIds },
+          companyId,
+          isDeleted: false,
+          isActive: true,
+        },
+      });
+
+      if (findEmployees.length !== payload.employeeIds.length) {
+        throw new BadRequestException(
+          'One or more employees not found or are inactive',
+        );
+      }
+
+      const existingPayslips = await this.prisma.payslip.findMany({
+        where: {
+          payrollId,
+          employeeId: { in: payload.employeeIds },
+        },
+      });
+
+      if (existingPayslips.length > 0) {
+        throw new BadRequestException(
+          'One or more employees are already added to this payroll',
+        );
+      }
+
+      this.eventEmitterService.emit(
+        IEvent.PAYSIPLS_CREATION,
+        new CreatePayslipDto({
+          companyId,
+          payrollId: payroll.id,
+          employeeIds: payload.employeeIds,
+          isExistingPayroll: true,
+        }),
+      );
+
+      await this.notificationService.sendCompanyNotification(
+        companyId,
+        'PAYROLL UPDATED',
+        `Employees have been added to payroll ${payroll.name}`,
+      );
+
+      return new ReturnType({
+        message:
+          'Employees are being added to the payroll, payslips are being created',
+        success: true,
+        data: null,
+      });
+    } catch (error) {
+      this.logger.error('Error adding employees to payroll:', error);
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+      )
+        throw error;
+      throw new BadRequestException(
+        'An error occurred while adding employees to payroll',
+      );
+    }
+  }
 }

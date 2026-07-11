@@ -31,6 +31,7 @@ import { EmployeeAuthGuard } from 'src/common/guards/employee-auth/employee-auth
 import { GeneralAuthGuardGuard } from 'src/common/guards/general-auth-guard/general-auth-guard.guard';
 
 @ApiTags('Employees')
+@ApiBearerAuth()
 @Controller('employees')
 export class EmployeeController {
   constructor(private readonly employeeService: EmployeeService) { }
@@ -51,7 +52,6 @@ export class EmployeeController {
 
   @Post()
   @UseGuards(UserAuthGuard)
-  @ApiBearerAuth()
   // @Roles(UserRole.ADMIN, UserRole.HR)
   @ApiOperation({ summary: 'Create a new employee' })
   @ApiResponse({ status: 201, description: 'Employee created successfully' })
