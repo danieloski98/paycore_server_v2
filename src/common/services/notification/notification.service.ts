@@ -72,6 +72,7 @@ export class NotificationService {
       const notifications = await this.prisma.notification.findMany({
         where: {
           employeeId,
+          isRead: false,
           isDeleted: false,
         },
         orderBy: {
@@ -96,6 +97,7 @@ export class NotificationService {
    */
   async getCompanyNotifications(
     companyId: string,
+    userId: string,
     skip = 1,
     take = 10,
   ): Promise<ReturnType> {
@@ -104,6 +106,11 @@ export class NotificationService {
         where: {
           companyId,
           isDeleted: false,
+          NOT: {
+            readBy: {
+              has: userId,
+            },
+          },
         },
         orderBy: {
           createdAt: 'desc',
@@ -125,7 +132,7 @@ export class NotificationService {
   /**
    * Mark a notification as read
    */
-  async markNotificationAsRead(notificationId: string): Promise<ReturnType> {
+  async markNotificationAsRead(notificationId: string, userId: string): Promise<ReturnType> {
     try {
       const existing = await this.prisma.notification.findFirst({
         where: {
@@ -138,12 +145,18 @@ export class NotificationService {
         throw new NotFoundException('Notification not found');
       }
 
+      // Check if user has already read this notification
+      const alreadyRead = existing.readBy?.includes(userId);
+
       const updated = await this.prisma.notification.update({
         where: {
           id: notificationId,
         },
         data: {
           isRead: true,
+          readBy: alreadyRead ? undefined : {
+            push: userId,
+          },
         },
       });
 
@@ -221,13 +234,17 @@ export class NotificationService {
   /**
    * Get unread notifications count for a company
    */
-  async getCompanyUnreadNotificationsCount(companyId: string): Promise<ReturnType> {
+  async getCompanyUnreadNotificationsCount(companyId: string, userId: string): Promise<ReturnType> {
     try {
       const count = await this.prisma.notification.count({
         where: {
           companyId,
-          isRead: false,
           isDeleted: false,
+          NOT: {
+            readBy: {
+              has: userId,
+            },
+          },
         },
       });
 

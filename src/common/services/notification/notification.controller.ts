@@ -17,6 +17,8 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { NotificationService } from './notification.service';
+import { GeneralAuthGuardGuard } from '../../guards/general-auth-guard/general-auth-guard.guard';
+import * as userDecorator from '../../decorators/user/user.decorator';
 
 @ApiTags('Notifications')
 @Controller('notifications')
@@ -72,6 +74,7 @@ export class NotificationController {
   }
 
   @Get('company/:companyId')
+  @UseGuards(GeneralAuthGuardGuard)
   @ApiOperation({
     summary: 'Get notifications for a company',
     description: 'Retrieves paginated notifications for a specific company',
@@ -108,11 +111,13 @@ export class NotificationController {
   })
   async getCompanyNotifications(
     @Param('companyId') companyId: string,
+    @userDecorator.GetUser('id') userId: string,
     @Query('skip') skip?: number,
     @Query('take') take?: number,
   ) {
     return this.notificationService.getCompanyNotifications(
       companyId,
+      userId,
       skip,
       take,
     );
@@ -150,6 +155,7 @@ export class NotificationController {
   }
 
   @Get('company/:companyId/unread/count')
+  @UseGuards(GeneralAuthGuardGuard)
   @ApiOperation({
     summary: 'Get unread notifications count for a company',
     description:
@@ -176,13 +182,16 @@ export class NotificationController {
   })
   async getCompanyUnreadNotificationsCount(
     @Param('companyId') companyId: string,
+    @userDecorator.GetUser('id') userId: string,
   ) {
     return this.notificationService.getCompanyUnreadNotificationsCount(
       companyId,
+      userId,
     );
   }
 
   @Patch(':notificationId/read')
+  @UseGuards(GeneralAuthGuardGuard)
   @ApiOperation({
     summary: 'Mark a notification as read',
     description: 'Marks a specific notification as read by its ID',
@@ -202,8 +211,9 @@ export class NotificationController {
   })
   async markNotificationAsRead(
     @Param('notificationId') notificationId: string,
+    @userDecorator.GetUser('id') userId: string,
   ) {
-    return this.notificationService.markNotificationAsRead(notificationId);
+    return this.notificationService.markNotificationAsRead(notificationId, userId);
   }
 
   @Delete(':notificationId')
