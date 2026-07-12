@@ -5,6 +5,8 @@ import {
   Query,
   UseGuards,
   ParseUUIDPipe,
+  Patch,
+  Delete,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -178,5 +180,53 @@ export class NotificationController {
     return this.notificationService.getCompanyUnreadNotificationsCount(
       companyId,
     );
+  }
+
+  @Patch(':notificationId/read')
+  @ApiOperation({
+    summary: 'Mark a notification as read',
+    description: 'Marks a specific notification as read by its ID',
+  })
+  @ApiParam({
+    name: 'notificationId',
+    description: 'The ID of the notification to mark as read',
+    type: 'string',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Notification successfully marked as read',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Notification not found',
+  })
+  async markNotificationAsRead(
+    @Param('notificationId') notificationId: string,
+  ) {
+    return this.notificationService.markNotificationAsRead(notificationId);
+  }
+
+  @Delete(':notificationId')
+  @ApiOperation({
+    summary: 'Delete a notification',
+    description: 'Soft deletes a specific notification by its ID',
+  })
+  @ApiParam({
+    name: 'notificationId',
+    description: 'The ID of the notification to delete',
+    type: 'string',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Notification successfully deleted',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Notification not found',
+  })
+  async deleteNotification(
+    @Param('notificationId') notificationId: string,
+  ) {
+    return this.notificationService.deleteNotification(notificationId);
   }
 }
