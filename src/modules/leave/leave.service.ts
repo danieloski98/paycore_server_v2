@@ -2,12 +2,13 @@ import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { CreateLeaveDto } from './dto/CreateLeaveDto';
 import { EmployeeService } from '../employee/employee.service';
-import { LeaveStatus, LeaveType } from 'generated/prisma/enums';
+import { EmployeeLeaveStatus, LeaveStatus, LeaveType } from 'generated/prisma/enums';
 import { ReturnType } from 'src/common/returnType';
 import { PaginatedQuery } from 'src/common/classes/PaginatedQuery';
 import { PaginatedResponse } from 'src/common/classes/PagintedResponse';
 import { EmailService } from 'src/common/services/email/email.service';
 import { NotificationService } from 'src/common/services/notification/notification.service';
+import { Cron } from '@nestjs/schedule';
 
 @Injectable()
 export class LeaveService {
@@ -230,6 +231,24 @@ export class LeaveService {
         },
       });
 
+      // update user details 
+      if (status === LeaveStatus.ACCEPTED) {
+        if (existingLeave.startDate === new Date()) {
+          await this.prismaService.employee.update(
+            {
+              where: {
+                id: existingLeave.employeeId
+              },
+              data: {
+                leaveStatus: status === LeaveStatus.ACCEPTED ? EmployeeLeaveStatus.ON_LEAVE : EmployeeLeaveStatus.NOT_ON_LEAVE,
+                leaveStartDate: existingLeave.startDate,
+                leaveEndDate: existingLeave.endDate,
+              }
+            }
+          )
+        }
+      }
+
       // Send leave status email to employee (non-blocking of main update)
       try {
         const company = await this.prismaService.company.findUnique({
@@ -256,7 +275,8 @@ export class LeaveService {
         success: true,
         data: updatedLeave,
       });
-    } catch (error) {
+    }
+    catch (error) {
       this.logger.error('Error changing leave status:', error);
       throw error;
     }
@@ -268,5 +288,120 @@ export class LeaveService {
     const diffTime = end.getTime() - start.getTime();
     const diffDays = diffTime / (1000 * 60 * 60 * 24);
     return diffDays;
+  }
+
+  @Cron('0 8 * * *', { name: 'check-leave-status' })
+  async checkLeaveStatus() {
+    try {
+      // Get all the leave requests (non-deleted) with Employee and their Company
+      const leaves = await this.prismaService.leave.findMany({
+        where: {
+          isDeleted: false,
+        },
+        include: {
+          Employee: {
+            include: {
+              Company: true,
+            },
+          },
+        },
+      });
+
+      // Sort them by status
+      leaves.sort((a, b) => a.Status.localeCompare(b.Status));
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // Perform state check and updates in parallel
+      const promises = leaves.map(async (leave) => {
+        if (leave.Status !== LeaveStatus.ACCEPTED) {
+          return;
+        }
+
+        const leaveStart = new Date(leave.startDate);
+        leaveStart.setHours(0, 0, 0, 0);
+
+        const leaveEnd = new Date(leave.endDate);
+        leaveEnd.setHours(0, 0, 0, 0);
+
+        const employeeName = `${leave.Employee.firstName} ${leave.Employee.lastName}`.trim() || 'Employee';
+        const companyName = leave.Employee.Company?.name || 'Your Company';
+
+        // Check if the leave has started/is active today
+        if (leaveStart.getTime() <= today.getTime() && leaveEnd.getTime() >= today.getTime()) {
+          // Attempt atomic transition to ON_LEAVE only if employee isn't already ON_LEAVE
+          const updateResult = await this.prismaService.employee.updateMany({
+            where: {
+              id: leave.employeeId,
+              leaveStatus: { not: EmployeeLeaveStatus.ON_LEAVE },
+            },
+            data: {
+              leaveStatus: EmployeeLeaveStatus.ON_LEAVE,
+              leaveStartDate: leave.startDate,
+              leaveEndDate: leave.endDate,
+            },
+          });
+
+          // If record was updated, we transitioned state and should send the starting email
+          if (updateResult.count > 0) {
+            this.logger.log(`Marked employee ${leave.employeeId} as ON_LEAVE for leave request ${leave.id}`);
+            try {
+              await this.emailService.sendLeaveStartedEmail({
+                email: leave.Employee.email,
+                name: employeeName,
+                companyName,
+                startDate: leave.startDate,
+                endDate: leave.endDate,
+                totalDays: leave.totalDays,
+                description: leave.description,
+                type: leave.type,
+              });
+            } catch (emailError) {
+              this.logger.error(`Failed to send leave starts today email to ${leave.Employee.email}`, emailError);
+            }
+          }
+        }
+        // Check if the leave has ended
+        else if (leaveEnd.getTime() < today.getTime()) {
+          // Attempt atomic transition to NOT_ON_LEAVE only if employee is on this specific leave
+          const updateResult = await this.prismaService.employee.updateMany({
+            where: {
+              id: leave.employeeId,
+              leaveStatus: EmployeeLeaveStatus.ON_LEAVE,
+              leaveStartDate: leave.startDate,
+              leaveEndDate: leave.endDate,
+            },
+            data: {
+              leaveStatus: EmployeeLeaveStatus.NOT_ON_LEAVE,
+              leaveStartDate: null,
+              leaveEndDate: null,
+            },
+          });
+
+          // If record was updated, we transitioned state and should send the ending email
+          if (updateResult.count > 0) {
+            this.logger.log(`Marked employee ${leave.employeeId} as NOT_ON_LEAVE for ended leave request ${leave.id}`);
+            try {
+              await this.emailService.sendLeaveEndedEmail({
+                email: leave.Employee.email,
+                name: employeeName,
+                companyName,
+                startDate: leave.startDate,
+                endDate: leave.endDate,
+                totalDays: leave.totalDays,
+                type: leave.type,
+              });
+            } catch (emailError) {
+              this.logger.error(`Failed to send leave ended email to ${leave.Employee.email}`, emailError);
+            }
+          }
+        }
+      });
+
+      await Promise.all(promises);
+    } catch (error) {
+      this.logger.error('Error checking leave status:', error);
+    }
   }
 }
