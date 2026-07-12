@@ -18,7 +18,7 @@ export class CompanyService {
   constructor(
     private databaseService: PrismaService,
     private configService: ConfigService,
-  ) {}
+  ) { }
 
   async checkCompany(id: string) {
     const company = await this.databaseService.company.findUnique({
@@ -73,11 +73,6 @@ export class CompanyService {
 
       let item = {
         ...newCompany,
-        logo: await this.databaseService.file.findUnique({
-          where: {
-            id: newCompany.logo,
-          },
-        }),
       };
 
       // create wallet for the company
@@ -117,18 +112,10 @@ export class CompanyService {
         throw new NotFoundException('Company not found');
       }
 
-      // Get logo separately if it exists
-      const logo = company.logo
-        ? await this.databaseService.file.findUnique({
-            where: { id: company.logo },
-          })
-        : null;
-
       return new ReturnType({
         success: true,
         data: {
           ...company,
-          logo,
         },
         message: 'Company retrieved successfully',
       });
@@ -161,18 +148,10 @@ export class CompanyService {
         data: payload,
       });
 
-      // Get logo separately if it exists
-      const logo = updatedCompany.logo
-        ? await this.databaseService.file.findUnique({
-            where: { id: updatedCompany.logo },
-          })
-        : null;
-
       return new ReturnType({
         success: true,
         data: {
           ...updatedCompany,
-          logo,
         },
         message: 'Company updated successfully',
       });
