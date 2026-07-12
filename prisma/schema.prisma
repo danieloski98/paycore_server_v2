@@ -161,6 +161,7 @@ model Notification {
   updatedAt  DateTime  @updatedAt
   deletedAt  DateTime?
   isDeleted  Boolean   @default(false)
+  readBy     String[]
 }
 
 model Otp {
