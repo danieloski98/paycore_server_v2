@@ -11,6 +11,8 @@ import EmployeeWelcomeEmail, {
   EmployeeWelcomeEmailProps,
 } from 'src/common/templates/employeeWelcome.template';
 import LeaveStatusEmail from 'src/common/templates/leaveStatus.template';
+import LeaveStartedEmail from 'src/common/templates/leaveStarted.template';
+import LeaveEndedEmail from 'src/common/templates/leaveEnded.template';
 import { LeaveStatus } from 'generated/prisma/enums';
 import BankDetailsRequestTemplate from 'src/common/templates/bankDetailsRequest.template';
 
@@ -179,6 +181,93 @@ export class EmailService {
       this.logger.log(data);
       if (error) {
         this.logger.error('Leave status email error', error);
+      }
+    } catch (error) {
+      throw new InternalServerErrorException(error);
+    }
+  }
+
+  async sendLeaveStartedEmail({
+    email,
+    name,
+    companyName,
+    startDate,
+    endDate,
+    totalDays,
+    description,
+    type,
+  }: {
+    email: string;
+    name: string;
+    companyName: string;
+    startDate: Date;
+    endDate: Date;
+    totalDays: number;
+    description: string;
+    type: string;
+  }) {
+    try {
+      const { error, data } = await this.resend.emails.send({
+        to: email,
+        subject: `Your leave starts today!`,
+        from: this.supportEmail,
+        react: LeaveStartedEmail({
+          employeeName: name,
+          companyName,
+          startDate: new Date(startDate).toDateString(),
+          endDate: new Date(endDate).toDateString(),
+          totalDays,
+          description,
+          type,
+          baseUrl: `${this.configService.get('APP_URL')}`,
+          supportEmail: this.supportEmail,
+        }),
+      });
+      this.logger.log(data);
+      if (error) {
+        this.logger.error('Leave started email error', error);
+      }
+    } catch (error) {
+      throw new InternalServerErrorException(error);
+    }
+  }
+
+  async sendLeaveEndedEmail({
+    email,
+    name,
+    companyName,
+    startDate,
+    endDate,
+    totalDays,
+    type,
+  }: {
+    email: string;
+    name: string;
+    companyName: string;
+    startDate: Date;
+    endDate: Date;
+    totalDays: number;
+    type: string;
+  }) {
+    try {
+      const { error, data } = await this.resend.emails.send({
+        to: email,
+        subject: `Welcome back! Your leave has ended`,
+        from: this.supportEmail,
+        react: LeaveEndedEmail({
+          employeeName: name,
+          companyName,
+          startDate: new Date(startDate).toDateString(),
+          endDate: new Date(endDate).toDateString(),
+          totalDays,
+          type,
+          baseUrl: `${this.configService.get('APP_URL')}`,
+          supportEmail: this.supportEmail,
+        }),
+      });
+      this.logger.log(data);
+      if (error) {
+        this.logger.error('Leave ended email error', error);
       }
     } catch (error) {
       throw new InternalServerErrorException(error);
