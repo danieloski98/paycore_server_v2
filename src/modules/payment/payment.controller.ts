@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, UseGuards, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, UseGuards, Query, UnauthorizedException } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiBody,
@@ -11,6 +11,7 @@ import {
 import { PaymentService } from './payment.service';
 import { CreatePaymentDto } from './dto/CreatePayment.dto';
 import { UserAuthGuard } from '../../common/guards/user-auth/user-auth.guard';
+import { EmployeeAuthGuard } from '../../common/guards/employee-auth/employee-auth.guard';
 import { GetUser } from '../../common/decorators/user/user.decorator';
 import { ReturnType } from '../../common/returnType';
 import { ValidatePayment } from './dto/ValidatePaymentDto';
@@ -74,11 +75,15 @@ export class PaymentController {
     status: 502,
     description: 'Bad gateway - Error occurred while validating payment',
   })
-  async validatePayment(@Body() validatePaymentDto: ValidatePayment) {
+  async validatePayment(
+    @Body() validatePaymentDto: ValidatePayment,
+    @GetUser('id') userId: string,
+  ) {
     console.log(validatePaymentDto);
     return this.paymentService.validatePayment(
       validatePaymentDto.companyId,
       validatePaymentDto.reference,
+      userId,
     );
   }
 
@@ -96,5 +101,24 @@ export class PaymentController {
   ) {
     const paginated = new PaginatedQuery(query.page, query.limit);
     return this.paymentService.getCompanyPayments(companyId, paginated);
+  }
+
+  @Get('employee/:employeeId')
+  @UseGuards(EmployeeAuthGuard)
+  @ApiOperation({ summary: 'Get employee payments (transactions)' })
+  @ApiParam({ name: 'employeeId', description: 'Employee ID' })
+  @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number (default: 1)' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Items per page (default: 10)' })
+  @ApiResponse({ status: 200, description: 'Employee payments retrieved successfully' })
+  async getEmployeePayments(
+    @Param('employeeId') employeeId: string,
+    @GetUser('id') authEmployeeId: string,
+    @Query() query: PaginatedQuery,
+  ) {
+    if (employeeId !== authEmployeeId) {
+      throw new UnauthorizedException('Not authorized to view these transactions');
+    }
+    const paginated = new PaginatedQuery(query.page, query.limit);
+    return this.paymentService.getEmployeePayments(employeeId, paginated);
   }
 }

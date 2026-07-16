@@ -90,18 +90,28 @@ export class EmployeeService {
   async createEmployee({
     companyID,
     payload,
+    userId
   }: {
     companyID: string;
     payload: CreateEmployeeDto;
+    userId: string
   }) {
     try {
       // Check if company exists
-      const company = await this.databaseService.company.findUnique({
-        where: { id: companyID },
-      });
+      const [company, user] = await this.databaseService.$transaction([
+        this.databaseService.company.findUnique({
+          where: { id: companyID },
+        }),
+        this.databaseService.user.findUnique({
+          where: { id: userId },
+        }),
+      ])
 
       if (!company) {
         throw new NotFoundException('Company not found');
+      }
+      if (!user || user.companyId !== company.id) {
+        throw new NotFoundException('User not found');
       }
 
       // Check if email already exists
@@ -124,6 +134,27 @@ export class EmployeeService {
           ...payload,
           startDate: new Date(payload.startDate).toISOString(),
           companyId: companyID,
+        },
+      });
+
+      // create wallet for the employee
+      await this.databaseService.wallet.create({
+        data: {
+          employeeId: employee.id,
+          walletType: 'EMPLOYEE',
+          balance: 0,
+          currency: 'NGN',
+        },
+      });
+
+      // create activity log for the company 
+      await this.databaseService.activityLog.create({
+        data: {
+          type: 'EMPLOYEE',
+          action: 'EMPLOYEE CREATED',
+          description: `${payload.firstName} ${payload.lastName} created by ${user.firstName} ${user.lastName}`,
+          companyId: companyID,
+          actorId: user.id,
         },
       });
 
@@ -159,15 +190,23 @@ export class EmployeeService {
   async createManyEmployees({
     companyID,
     payload,
+    userId
   }: {
     companyID: string;
     payload: CreateManyEmployeesDto;
+    userId: string
   }) {
     try {
       // Check if company exists
-      const company = await this.databaseService.company.findUnique({
-        where: { id: companyID },
-      });
+      // Check if company exists
+      const [company, user] = await this.databaseService.$transaction([
+        this.databaseService.company.findUnique({
+          where: { id: companyID },
+        }),
+        this.databaseService.user.findUnique({
+          where: { id: userId },
+        }),
+      ])
 
       if (!company) {
         throw new NotFoundException('Company not found');
@@ -203,6 +242,21 @@ export class EmployeeService {
           }),
         ),
       );
+
+      const data = createdEmployees.map((emp) => {
+        return {
+          type: 'EMPLOYEE',
+          action: 'EMPLOYEE CREATED',
+          description: `${emp.firstName} ${emp.lastName} created by ${user?.firstName} ${user?.lastName}`,
+          companyId: companyID,
+          actorId: user?.id,
+        }
+      })
+
+      await this.databaseService.activityLog.createMany({
+        data,
+      });
+
 
       // send out email to all employes
       await Promise.all(
