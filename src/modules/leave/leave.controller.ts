@@ -119,7 +119,8 @@ export class LeaveController {
   async changeLeaveStatus(
     @Param('id') leaveId: string,
     @Body() payload: ChangeLeaveStatusDto,
+    @userDecorator.GetUser('id') userId: string,
   ) {
-    return this.leaveService.changeLeaveStatus(leaveId, payload.status);
+    return this.leaveService.changeLeaveStatus(leaveId, payload.status, userId);
   }
 }

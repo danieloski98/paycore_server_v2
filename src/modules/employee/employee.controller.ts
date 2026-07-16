@@ -63,10 +63,12 @@ export class EmployeeController {
   async createEmployee(
     @Body() createEmployeeDto: CreateEmployeeDto,
     @GetUser('companyId') companyId: string,
+    @GetUser('id') userId: string,
   ) {
     return this.employeeService.createEmployee({
       companyID: companyId,
       payload: createEmployeeDto,
+      userId
     });
   }
 
@@ -83,6 +85,7 @@ export class EmployeeController {
   async createManyEmployees(
     @Body() createManyEmployeesDto: CreateManyEmployeesDto,
     @GetUser('companyId') companyId: string,
+    @GetUser('id') userId: string,
   ) {
     if (!companyId) {
       throw new UnauthorizedException(
@@ -92,6 +95,7 @@ export class EmployeeController {
     return this.employeeService.createManyEmployees({
       companyID: companyId,
       payload: createManyEmployeesDto,
+      userId
     });
   }
 

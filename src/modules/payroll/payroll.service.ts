@@ -37,7 +37,7 @@ export class PayrollService {
     private readonly payslipProcessingQueue: Queue,
   ) { }
 
-  async createPayroll(companyId: string, payload: CreatePayrollDto) {
+  async createPayroll(companyId: string, payload: CreatePayrollDto, userId?: string) {
     try {
       await this.companyService.checkCompany(companyId);
       // verify employee exists
@@ -76,6 +76,27 @@ export class PayrollService {
           employeeIds: payload.employeeIds,
         }),
       );
+
+      // create activity log for the company
+      let actorName = 'System';
+      if (userId) {
+        const user = await this.prisma.user.findUnique({
+          where: { id: userId },
+        });
+        if (user) {
+          actorName = `${user.firstName} ${user.lastName}`;
+        }
+      }
+
+      await this.prisma.activityLog.create({
+        data: {
+          type: 'PAYROLL',
+          action: 'PAYROLL CREATED',
+          description: `Payroll "${payload.name}" for ${getMonthName(payload.month)} ${payload.year} was created by ${actorName}`,
+          companyId,
+          actorId: userId || null,
+        },
+      });
 
       await this.notificationService.sendCompanyNotification(
         companyId,
@@ -833,7 +854,7 @@ export class PayrollService {
     }
   }
 
-  async startProcessingPayroll(payrollId: string, companyId: string) {
+  async startProcessingPayroll(payrollId: string, companyId: string, userId?: string) {
     try {
       await this.companyService.checkCompany(companyId);
 
@@ -897,6 +918,27 @@ export class PayrollService {
           payslipId: slip.id,
         });
       }
+
+      // create activity log for the company
+      let actorName = 'System';
+      if (userId) {
+        const user = await this.prisma.user.findUnique({
+          where: { id: userId },
+        });
+        if (user) {
+          actorName = `${user.firstName} ${user.lastName}`;
+        }
+      }
+
+      await this.prisma.activityLog.create({
+        data: {
+          type: 'PAYROLL',
+          action: 'PAYROLL PROCESSING STARTED',
+          description: `Processing started for payroll "${payroll.name}" by ${actorName}`,
+          companyId,
+          actorId: userId || null,
+        },
+      });
 
       await this.notificationService.sendCompanyNotification(
         companyId,

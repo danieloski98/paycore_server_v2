@@ -80,7 +80,7 @@ export class PaymentService {
     }
   }
 
-  async validatePayment(companyId: string, transactionReference: string) {
+  async validatePayment(companyId: string, transactionReference: string, userId?: string) {
     try {
       this.logger.debug(
         'Validating payment with reference:',
@@ -116,6 +116,27 @@ export class PaymentService {
         },
         data: {
           status: PaymentStatus.COMPLETED,
+        },
+      });
+
+      // create activity log for the company
+      let actorName = 'System';
+      if (userId) {
+        const user = await this.databaseService.user.findUnique({
+          where: { id: userId },
+        });
+        if (user) {
+          actorName = `${user.firstName} ${user.lastName}`;
+        }
+      }
+      const amountFunded = Number(response.data.amount / 100);
+      await this.databaseService.activityLog.create({
+        data: {
+          type: 'WALLET',
+          action: 'WALLET FUNDED',
+          description: `Company wallet funded with ${amountFunded} NGN by ${actorName}`,
+          companyId,
+          actorId: userId || null,
         },
       });
 
@@ -181,6 +202,52 @@ export class PaymentService {
       if (error instanceof BadRequestException) throw error;
       throw new BadRequestException(
         'An error occurred while retrieving company payments',
+      );
+    }
+  }
+
+  async getEmployeePayments(
+    employeeId: string,
+    query: PaginatedQuery,
+  ): Promise<PaginatedResponse<any>> {
+    try {
+      const { page = 1, limit = 10 } = query;
+      if (page < 1) throw new BadRequestException('Page number must be >= 1');
+      if (limit < 1) throw new BadRequestException('Limit must be >= 1');
+      const skip = (page - 1) * limit;
+
+      const where = {
+        employeeId,
+        isDeleted: false,
+        status: {
+          in: [PaymentStatus.FAILED, PaymentStatus.COMPLETED, PaymentStatus.PENDING],
+        },
+      };
+
+      const [payments, total] = await Promise.all([
+        this.databaseService.payment.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: { createdAt: 'desc' },
+        }),
+        this.databaseService.payment.count({ where }),
+      ]);
+
+      return new PaginatedResponse({
+        success: true,
+        message: 'Employee payments retrieved successfully',
+        data: payments,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      });
+    } catch (error) {
+      this.logger.error('Error getting payments by employee ID:', error);
+      if (error instanceof BadRequestException) throw error;
+      throw new BadRequestException(
+        'An error occurred while retrieving employee payments',
       );
     }
   }

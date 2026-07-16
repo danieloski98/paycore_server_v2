@@ -64,7 +64,7 @@ export class EmailService {
         from: this.supportEmail,
         react: EmployeeWelcomeEmail({
           ...rest,
-          loginUrl: `${this.configService.get('FRONTEND_BASE_URL')}/employee/auth/setup?employeeId=${employeeId}&companyId${companyId}`,
+          loginUrl: `${this.configService.get('FRONTEND_BASE_URL')}/employee-auth/setup?employeeId=${employeeId}&companyId${companyId}`,
           baseUrl: `${this.configService.get('APP_URL')}`,
         }),
       });
@@ -160,8 +160,8 @@ export class EmailService {
         status === LeaveStatus.ACCEPTED
           ? 'accepted'
           : status === LeaveStatus.REJECTED
-          ? 'declined'
-          : 'updated';
+            ? 'declined'
+            : 'updated';
       const { error, data } = await this.resend.emails.send({
         to: email,
         subject: `Your leave request was ${statusText}`,

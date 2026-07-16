@@ -46,6 +46,18 @@ export class LeaveService {
         },
       });
 
+      // create activity log for the company
+      const totalDays = this.calculateTotalDays(payload.startDate, payload.endDate);
+      await this.prismaService.activityLog.create({
+        data: {
+          type: 'LEAVE',
+          action: 'LEAVE REQUESTED',
+          description: `Leave request for ${payload.leaveType} (${totalDays} day(s)) was submitted by ${employee.firstName} ${employee.lastName}`,
+          companyId: employee.companyId,
+          employeeId: employeeId,
+        },
+      });
+
       // Send company notification about new leave request
       try {
         const title = 'New leave request submitted';
@@ -192,7 +204,7 @@ export class LeaveService {
     }
   }
 
-  async changeLeaveStatus(leaveId: string, status: LeaveStatus) {
+  async changeLeaveStatus(leaveId: string, status: LeaveStatus, userId?: string) {
     try {
       const existingLeave = await this.prismaService.leave.findFirst({
         where: {
@@ -269,6 +281,30 @@ export class LeaveService {
       } catch (emailError) {
         this.logger.error('Failed to send leave status email', emailError);
       }
+
+      // create activity log for the company
+      let actorName = 'System';
+      if (userId) {
+        const user = await this.prismaService.user.findUnique({
+          where: { id: userId },
+        });
+        if (user) {
+          actorName = `${user.firstName} ${user.lastName}`;
+        }
+      }
+
+      const actionText = status === LeaveStatus.ACCEPTED ? 'APPROVED' : status === LeaveStatus.REJECTED ? 'DECLINED' : 'STATUS CHANGED';
+
+      await this.prismaService.activityLog.create({
+        data: {
+          type: 'LEAVE',
+          action: `LEAVE ${actionText}`,
+          description: `Leave request for ${updatedLeave.Employee.firstName} ${updatedLeave.Employee.lastName} was ${actionText.toLowerCase()} by ${actorName}`,
+          companyId: updatedLeave.companyId,
+          employeeId: updatedLeave.employeeId,
+          actorId: userId || null,
+        },
+      });
 
       return new ReturnType({
         message: `Leave status updated to ${status.toLowerCase()} successfully`,

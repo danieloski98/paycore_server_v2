@@ -48,8 +48,9 @@ export class PayrollController {
   async createPayroll(
     @Body() createPayrollDto: CreatePayrollDto,
     @GetUser('companyId') companyId: string,
+    @GetUser('id') userId: string,
   ) {
-    return this.payrollService.createPayroll(companyId, createPayrollDto);
+    return this.payrollService.createPayroll(companyId, createPayrollDto, userId);
   }
 
   @Post(':id/add-employees')
@@ -154,8 +155,9 @@ export class PayrollController {
   async startProcessingPayroll(
     @Param('id') payrollId: string,
     @GetUser('companyId') companyId: string,
+    @GetUser('id') userId: string,
   ) {
-    return this.payrollService.startProcessingPayroll(payrollId, companyId);
+    return this.payrollService.startProcessingPayroll(payrollId, companyId, userId);
   }
 
   @Patch(':id')

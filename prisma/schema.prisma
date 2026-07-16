@@ -44,7 +44,7 @@ model Company {
   payments  Payment[]
   Payroll   Payroll[]
   Payslip   Payslip[]
-  Wallet    Wallet[]
+  Wallet    Wallet?
 
   departments Department[]
 }
@@ -110,6 +110,8 @@ model Employee {
   Company        Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
   Leave          Leave[]
   Payslip        Payslip[]
+  wallet         Wallet?
+  payments       Payment[]
 }
 
 model Department {
@@ -178,17 +180,20 @@ model Otp {
 }
 
 model Payment {
-  id        String        @id @default(cuid())
-  companyId String
-  reference String
-  amount    Float
-  walletId  String
-  status    PaymentStatus @default(PENDING)
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
-  deletedAt DateTime?
-  isDeleted Boolean       @default(false)
-  Creator   Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  id         String        @id @default(cuid())
+  companyId  String?
+  employeeId String?
+  reference  String
+  amount     Float
+  charge     Float?        @default(0)
+  walletId   String
+  status     PaymentStatus @default(PENDING)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  deletedAt  DateTime?
+  isDeleted  Boolean       @default(false)
+  Creator    Company?      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  Employee   Employee?     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 }
 
 model Payroll {
@@ -252,15 +257,35 @@ model User {
 }
 
 model Wallet {
-  id        String    @id @default(cuid())
-  balance   Float
-  companyId String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
-  isDeleted Boolean   @default(false)
-  currency  Currency  @default(NGN)
-  Company   Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  id         String     @id @default(cuid())
+  balance    Float
+  companyId  String?    @unique
+  employeeId String?    @unique
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  deletedAt  DateTime?
+  isDeleted  Boolean    @default(false)
+  walletType WalletType @default(USER)
+  currency   Currency   @default(NGN)
+  Company    Company?   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  Employee   Employee?  @relation(fields: [employeeId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+}
+
+model ActivityLog {
+  id          String   @id @default(cuid())
+  type        String
+  action      String
+  description String?
+  companyId   String?
+  employeeId  String?
+  entityId    String?
+  actorId     String?
+  createdAt   DateTime @default(now())
+}
+
+enum WalletType {
+  USER
+  EMPLOYEE
 }
 
 enum Currency {
