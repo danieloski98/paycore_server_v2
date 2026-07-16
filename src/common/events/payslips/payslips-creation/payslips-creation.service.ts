@@ -34,77 +34,10 @@ export class PayslipsCreationService {
         },
       });
 
-      // Find employees without a primary bank account
-      const invalidEmployees = employees.filter((emp) => {
-        return !emp.BankDetails.some((bank) => bank.isPrimary);
-      });
-
-      // Send notifications/emails to invalid employees
-      for (const emp of invalidEmployees) {
-        try {
-          await this.notificationService.sendEmployeeNotification(
-            emp.id,
-            'BANK DETAILS REQUIRED',
-            'Please add your primary bank account details to receive your payroll payments.',
-          );
-
-          await this.emailService.sendBankDetailsRequestEmail({
-            email: emp.email,
-            name: `${emp.firstName} ${emp.lastName}`,
-            companyName: emp.Company.name,
-          });
-        } catch (error) {
-          this.logger.error(
-            `Failed to send bank details alert to employee ${emp.id}`,
-            error,
-          );
-        }
-      }
-
-      // filter to employees with a primary bank account
-      const validEmployees = employees.filter((emp) => {
-        const primaryBank = emp.BankDetails.find((bank) => bank.isPrimary);
-        if (!primaryBank) {
-          this.logger.warn(
-            `Employee ${emp.id} has no primary bank account. Skipping.`,
-          );
-
-          return false;
-        }
-        return true;
-      });
-
-      if (validEmployees.length === 0) {
-        this.logger.error(
-          `No valid employees with primary bank accounts for payroll ${data.payrollId}.`,
-        );
-
-        if (!data.isExistingPayroll) {
-          await this.prismaService.payroll.delete({
-            where: {
-              id: data?.payrollId,
-            },
-          });
-
-          try {
-            await this.notificationService.sendCompanyNotification(
-              data.companyId,
-              'PAYROLL CANCELLED',
-              'Payroll was cancelled as there was no valid employee with a bank account added',
-            );
-          } catch (notifyError) {
-            this.logger.error(
-              'Failed to send company notification for payroll cancellation',
-              notifyError,
-            );
-          }
-        }
-        return;
-      }
 
       // prepare payslip data
       this.logger.debug('PREPARING PAYSLIP DATA');
-      const payslipData = validEmployees.map((emp) => ({
+      const payslipData = employees.map((emp) => ({
         employeeId: emp.id,
         payrollId: data?.payrollId,
         companyId: data.companyId,
@@ -117,7 +50,7 @@ export class PayslipsCreationService {
 
       // create first earning
       this.logger.debug('PREPARING EARNING DATA');
-      const earningsData = validEmployees.map((emp) => ({
+      const earningsData = employees.map((emp) => ({
         amount: emp.salary,
         type: EarningType.BASIC_SALARY,
         employeeId: emp.id,
