@@ -21,54 +21,16 @@ import { PaginatedQuery } from '../../common/classes/PaginatedQuery';
 @ApiTags('Bank')
 @Controller('bank')
 export class BankController {
-  constructor(private readonly bankService: BankService) {}
+  constructor(private readonly bankService: BankService) { }
 
   @Get()
   @ApiOperation({ summary: 'Get all banks from paystack' })
-  @ApiResponse({
-    status: 200,
-    description: 'Returns a list of all available banks from Monnify',
-    schema: {
-      properties: {
-        message: { type: 'string' },
-        success: { type: 'boolean' },
-        data: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              bankCode: { type: 'string' },
-              bankName: { type: 'string' },
-            },
-          },
-        },
-      },
-    },
-  })
   async getBanks() {
     return await this.bankService.getBanks();
   }
 
   @Post('validate')
   @ApiOperation({ summary: 'Validate a bank account' })
-  @ApiResponse({
-    status: 200,
-    description: 'Returns the validated bank account details',
-    schema: {
-      properties: {
-        message: { type: 'string' },
-        success: { type: 'boolean' },
-        data: {
-          type: 'object',
-          properties: {
-            accountName: { type: 'string' },
-            accountNumber: { type: 'string' },
-            bankCode: { type: 'string' },
-          },
-        },
-      },
-    },
-  })
   async validateBank(@Body() payload: ValidateBankDto) {
     return await this.bankService.validateBank({ payload });
   }
@@ -106,28 +68,6 @@ export class BankController {
   @Post()
   @UseGuards(EmployeeAuthGuard)
   @ApiOperation({ summary: 'Create a new bank record' })
-  @ApiResponse({
-    status: 201,
-    description: 'Returns the created bank record',
-    schema: {
-      properties: {
-        message: { type: 'string' },
-        success: { type: 'boolean' },
-        data: {
-          type: 'object',
-          properties: {
-            id: { type: 'string' },
-            accountName: { type: 'string' },
-            accountNumber: { type: 'string' },
-            bankCode: { type: 'string' },
-            bankName: { type: 'string' },
-            isPrimary: { type: 'boolean' },
-            employeeId: { type: 'string' },
-          },
-        },
-      },
-    },
-  })
   async createBankRecord(
     @Body() payload: CreateBankRecordDto,
     @GetEmployee('id') userId: string,
@@ -138,23 +78,6 @@ export class BankController {
   @Put(':bankId/primary')
   @UseGuards(EmployeeAuthGuard)
   @ApiOperation({ summary: 'Mark a bank record as primary' })
-  @ApiResponse({
-    status: 200,
-    description: 'Returns the updated bank record marked as primary',
-    schema: {
-      properties: {
-        message: { type: 'string' },
-        success: { type: 'boolean' },
-        data: {
-          type: 'object',
-          properties: {
-            id: { type: 'string' },
-            isPrimary: { type: 'boolean' },
-          },
-        },
-      },
-    },
-  })
   async markBankAsPrimary(
     @Param('bankId') bankId: string,
     @GetEmployee('id') userId: string,
@@ -165,26 +88,6 @@ export class BankController {
   @Put(':bankId')
   @UseGuards(EmployeeAuthGuard)
   @ApiOperation({ summary: 'Update a bank record' })
-  @ApiResponse({
-    status: 200,
-    description: 'Returns the updated bank record',
-    schema: {
-      properties: {
-        message: { type: 'string' },
-        success: { type: 'boolean' },
-        data: {
-          type: 'object',
-          properties: {
-            id: { type: 'string' },
-            accountName: { type: 'string' },
-            accountNumber: { type: 'string' },
-            bankCode: { type: 'string' },
-            bankName: { type: 'string' },
-          },
-        },
-      },
-    },
-  })
   async updateBankRecord(
     @Param('bankId') bankId: string,
     @Body() payload: UpdateBankRecordDto,
@@ -196,23 +99,6 @@ export class BankController {
   @Delete(':bankId')
   @UseGuards(EmployeeAuthGuard)
   @ApiOperation({ summary: 'Soft delete a bank record' })
-  @ApiResponse({
-    status: 200,
-    description: 'Returns the soft deleted bank record',
-    schema: {
-      properties: {
-        message: { type: 'string' },
-        success: { type: 'boolean' },
-        data: {
-          type: 'object',
-          properties: {
-            id: { type: 'string' },
-            isDeleted: { type: 'boolean' },
-          },
-        },
-      },
-    },
-  })
   async softDeleteBankRecord(
     @Param('bankId') bankId: string,
     @GetEmployee('id') userId: string,
