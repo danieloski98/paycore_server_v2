@@ -50,13 +50,13 @@ export class PayslipsCreationService {
 
       // create first earning
       this.logger.debug('PREPARING EARNING DATA');
-      const earningsData = employees.map((emp) => ({
-        amount: emp.salary,
-        type: EarningType.BASIC_SALARY,
-        employeeId: emp.id,
-        payrollId: data?.payrollId,
-        description: 'Basic Salary',
-      }));
+      // const earningsData = employees.map((emp) => ({
+      //   amount: emp.salary,
+      //   type: EarningType.BASIC_SALARY,
+      //   employeeId: emp.id,
+      //   payrollId: data?.payrollId,
+      //   description: 'Basic Salary',
+      // }));
 
       // create payslips and earnings in a transactions
       await this.prismaService.$transaction(async (tx) => {
@@ -68,9 +68,9 @@ export class PayslipsCreationService {
 
         //create first earning
         this.logger.debug('CREATING EARNINGS');
-        await tx.earning.createMany({
-          data: earningsData,
-        });
+        // await tx.earning.createMany({
+        //   data: earningsData,
+        // });
       });
     } catch (error) {
       this.logger.error(error);

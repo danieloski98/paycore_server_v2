@@ -43,6 +43,13 @@ export class UpdateEmployeeDto {
     })
     @IsString()
     @IsOptional()
+    picture: string;
+
+    @ApiProperty({
+        example: 'Orion'
+    })
+    @IsString()
+    @IsOptional()
     department: string;
 
     @ApiProperty({

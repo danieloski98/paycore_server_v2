@@ -97,18 +97,6 @@ export class PayslipsProcessingService extends WorkerHost {
       return;
     }
 
-    const bankDetails = await this.prisma.bankDetails.findFirst({
-      where: { id: payslip.bankId, isDeleted: false },
-    });
-
-    if (!bankDetails) {
-      this.logger.error(`Bank details not found for payslip: ${payslipId}`);
-      await this.handlePayslipFailure(
-        payslip,
-        'Bank details not found for employee',
-      );
-      return;
-    }
 
     try {
       // compute total earnings and deductions for this payslip (by payroll and employee)
@@ -137,7 +125,7 @@ export class PayslipsProcessingService extends WorkerHost {
 
       const totalEarnings = earnAgg._sum?.amount ?? 0;
       const totalDeductions = dedAgg._sum?.amount ?? 0;
-      const payoutAmount = payslip.netSalary + totalEarnings - totalDeductions;
+      const payoutAmount = totalDeductions === 0 && totalEarnings === 0 ? payslip.basicSalary : payslip.basicSalary + (totalEarnings - totalDeductions);
 
       // check company wallet balance before proceeding
       const wallet = await this.prisma.wallet.findFirst({
