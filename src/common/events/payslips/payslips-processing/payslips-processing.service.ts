@@ -1,9 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
-import { PrismaService } from 'src/common/prisma/prisma.service';
+import { PrismaService } from '../../../prisma/prisma.service';
 import { PayslipStatus, PaymentStatus } from 'generated/prisma/enums';
-import { PaystackService } from 'src/common/services/paystack/paystack.service';
+import { PaystackService } from '../../../services/paystack/paystack.service';
+import { NotificationService } from '../../../services/notification/notification.service';
+import { EmailService } from '../../../services/email/email.service';
 
 @Processor('payslip-processing')
 @Injectable()
@@ -13,8 +15,66 @@ export class PayslipsProcessingService extends WorkerHost {
   constructor(
     private readonly prisma: PrismaService,
     private readonly paystackService: PaystackService,
+    private readonly notificationService: NotificationService,
+    private readonly emailService: EmailService,
   ) {
     super();
+  }
+
+  private async handlePayslipFailure(
+    payslip: {
+      id: string;
+      companyId: string;
+      Employee?: { firstName: string; lastName: string } | null;
+    },
+    reason: string,
+  ) {
+    await this.prisma.payslip.update({
+      where: { id: payslip.id },
+      data: { status: PayslipStatus.FAILED },
+    });
+
+    const employeeName = payslip.Employee
+      ? `${payslip.Employee.firstName} ${payslip.Employee.lastName}`
+      : 'Employee';
+
+    // Send notification to company
+    try {
+      await this.notificationService.sendCompanyNotification(
+        payslip.companyId,
+        'PAYSLIP PROCESSING FAILED',
+        `Payslip for ${employeeName} failed to process. Reason: ${reason}`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to send company notification for payslip ${payslip.id}`,
+        error,
+      );
+    }
+
+    // Send email to company
+    try {
+      const company = await this.prisma.company.findUnique({
+        where: { id: payslip.companyId },
+        include: { User: true },
+      });
+
+      if (company?.User?.email) {
+        await this.emailService.sendPayslipFailedEmail({
+          email: company.User.email,
+          adminName: `${company.User.firstName} ${company.User.lastName}`,
+          companyName: company.name,
+          employeeName,
+          reason,
+          payslipId: payslip.id,
+        });
+      }
+    } catch (error) {
+      this.logger.error(
+        `Failed to send failure email for payslip ${payslip.id}`,
+        error,
+      );
+    }
   }
 
   async process(job: Job<{ payslipId: string }>) {
@@ -43,10 +103,10 @@ export class PayslipsProcessingService extends WorkerHost {
 
     if (!bankDetails) {
       this.logger.error(`Bank details not found for payslip: ${payslipId}`);
-      await this.prisma.payslip.update({
-        where: { id: payslipId },
-        data: { status: PayslipStatus.FAILED },
-      });
+      await this.handlePayslipFailure(
+        payslip,
+        'Bank details not found for employee',
+      );
       return;
     }
 
@@ -85,13 +145,11 @@ export class PayslipsProcessingService extends WorkerHost {
       });
 
       if (!wallet || wallet.balance < payoutAmount) {
+        const reason = `Insufficient wallet balance: required ${payoutAmount} NGN, available ${wallet?.balance ?? 0} NGN`;
         this.logger.error(
           `Insufficient wallet balance for company ${payslip.companyId}: required ${payoutAmount}, available ${wallet?.balance ?? 0}`,
         );
-        await this.prisma.payslip.update({
-          where: { id: payslipId },
-          data: { status: PayslipStatus.FAILED },
-        });
+        await this.handlePayslipFailure(payslip, reason);
         return;
       }
 
@@ -162,10 +220,10 @@ export class PayslipsProcessingService extends WorkerHost {
       this.logger.log(`Payslip processed and employee wallet credited successfully: ${payslipId}`);
     } catch (error) {
       this.logger.error(`Failed to process payslip ${payslipId}`, error);
-      await this.prisma.payslip.update({
-        where: { id: payslipId },
-        data: { status: PayslipStatus.FAILED },
-      });
+      await this.handlePayslipFailure(
+        payslip,
+        error instanceof Error ? error.message : 'Unexpected processing error',
+      );
     }
   }
 }

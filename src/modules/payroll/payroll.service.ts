@@ -350,6 +350,114 @@ export class PayrollService {
     }
   }
 
+  async getDetailedPayslipsByPayrollId(
+    payrollId: string,
+    query: PaginatedQuery,
+  ) {
+    try {
+      const { page, limit } = query;
+
+      // Check if payroll exists
+      const payroll = await this.prisma.payroll.findFirst({
+        where: {
+          id: payrollId,
+          isDeleted: false,
+        },
+      });
+
+      if (!payroll) {
+        throw new NotFoundException('Payroll not found');
+      }
+
+      const payslips = await this.prisma.payslip.findMany({
+        where: {
+          payrollId,
+          isDeleted: false,
+        },
+        include: {
+          Employee: true,
+          Bank: true,
+          Company: true,
+          Payroll: true,
+        },
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+
+      const enrichedPayslips = await Promise.all(
+        payslips.map(async (payslip) => {
+          const [earnings, deductions] = await Promise.all([
+            this.prisma.earning.findMany({
+              where: {
+                isDeleted: false,
+                OR: [
+                  { payrollId: payslip.payrollId },
+                  { employeeId: payslip.employeeId },
+                ],
+              },
+            }),
+            this.prisma.deduction.findMany({
+              where: {
+                isDeleted: false,
+                OR: [
+                  { payrollId: payslip.payrollId },
+                  { employeeId: payslip.employeeId },
+                ],
+              },
+            }),
+          ]);
+
+          const totalEarnings = earnings.reduce((sum, e) => sum + e.amount, 0);
+          const totalDeductions = deductions.reduce(
+            (sum, d) => sum + d.amount,
+            0,
+          );
+          const payoutAmount =
+            payslip.netSalary + totalEarnings - totalDeductions;
+
+          return {
+            ...payslip,
+            earnings,
+            deductions,
+            totalEarnings,
+            totalDeductions,
+            payoutAmount,
+          };
+        }),
+      );
+
+      const total = await this.prisma.payslip.count({
+        where: {
+          payrollId,
+          isDeleted: false,
+        },
+      });
+
+      return new PaginatedResponse({
+        message: 'Detailed payslips retrieved successfully',
+        success: true,
+        data: enrichedPayslips,
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      });
+    } catch (error) {
+      this.logger.error('Error getting detailed payslips by payroll ID:', error);
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+      )
+        throw error;
+      throw new BadRequestException(
+        'An error occurred while retrieving detailed payslips',
+      );
+    }
+  }
+
   async getPayslipsById(payslipId: string) {
     try {
       const payslip = await this.prisma.payslip.findFirst({
@@ -1331,6 +1439,52 @@ export class PayrollService {
       throw new BadRequestException(
         'An error occurred while adding employees to payroll',
       );
+    }
+  }
+
+  async restartPayslip(companyId: string, payslipId: string) {
+    try {
+      await this.companyService.checkCompany(companyId);
+
+      const payslip = await this.prisma.payslip.findFirst({
+        where: {
+          id: payslipId,
+          companyId,
+          isDeleted: false,
+        },
+      });
+
+      if (!payslip) {
+        throw new NotFoundException('Payslip not found');
+      }
+
+      if (payslip.status !== PayslipStatus.FAILED) {
+        throw new BadRequestException('Only failed payslips can be restarted');
+      }
+
+      await this.prisma.payslip.update({
+        where: { id: payslipId },
+        data: { status: PayslipStatus.PENDING },
+      });
+
+      await this.payslipProcessingQueue.add('process-payslip', {
+        payslipId: payslip.id,
+      });
+
+      return new ReturnType({
+        success: true,
+        message: 'Payslip processing restarted successfully',
+        data: payslip,
+      });
+    } catch (error) {
+      this.logger.error(`Error restarting payslip ${payslipId}:`, error);
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+      ) {
+        throw error;
+      }
+      throw new BadRequestException('An error occurred while restarting payslip');
     }
   }
 }

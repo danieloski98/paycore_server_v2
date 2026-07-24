@@ -15,6 +15,7 @@ import LeaveStartedEmail from 'src/common/templates/leaveStarted.template';
 import LeaveEndedEmail from 'src/common/templates/leaveEnded.template';
 import { LeaveStatus } from 'generated/prisma/enums';
 import BankDetailsRequestTemplate from 'src/common/templates/bankDetailsRequest.template';
+import PayslipFailedTemplate from 'src/common/templates/payslipFailed.template';
 
 @Injectable()
 export class EmailService {
@@ -300,6 +301,43 @@ export class EmailService {
       }
     } catch (error) {
       throw new InternalServerErrorException(error);
+    }
+  }
+
+  async sendPayslipFailedEmail({
+    email,
+    adminName,
+    companyName,
+    employeeName,
+    reason,
+    payslipId,
+  }: {
+    email: string;
+    adminName: string;
+    companyName: string;
+    employeeName: string;
+    reason: string;
+    payslipId: string;
+  }) {
+    try {
+      const { error, data } = await this.resend.emails.send({
+        to: email,
+        subject: `Payslip Processing Failed - ${employeeName}`,
+        from: this.supportEmail,
+        react: PayslipFailedTemplate({
+          adminName,
+          companyName,
+          employeeName,
+          reason,
+          payslipId,
+        }),
+      });
+      this.logger.log(data);
+      if (error) {
+        this.logger.error('Failed to send payslip failed email', error);
+      }
+    } catch (error) {
+      this.logger.error('Failed to send payslip failed email', error);
     }
   }
 }
