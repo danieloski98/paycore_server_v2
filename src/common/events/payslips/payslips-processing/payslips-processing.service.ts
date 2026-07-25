@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { PayslipStatus, PaymentStatus } from 'generated/prisma/enums';
+import { PayslipStatus, PaymentStatus, PayrollStatus } from 'generated/prisma/enums';
 import { PaystackService } from '../../../services/paystack/paystack.service';
 import { NotificationService } from '../../../services/notification/notification.service';
 import { EmailService } from '../../../services/email/email.service';
@@ -21,9 +21,61 @@ export class PayslipsProcessingService extends WorkerHost {
     super();
   }
 
+  private async checkAndSetPayrollStatus(
+    payrollId: string,
+    companyId: string,
+    tx: any = this.prisma,
+  ) {
+    const remainingPendingCount = await tx.payslip.count({
+      where: {
+        payrollId,
+        isDeleted: false,
+        status: PayslipStatus.PENDING,
+      },
+    });
+
+    if (remainingPendingCount === 0) {
+      const failedCount = await tx.payslip.count({
+        where: {
+          payrollId,
+          isDeleted: false,
+          status: PayslipStatus.FAILED,
+        },
+      });
+
+      const finalStatus =
+        failedCount > 0 ? PayrollStatus.FAILED : PayrollStatus.COMPLETED;
+
+      await tx.payroll.update({
+        where: { id: payrollId },
+        data: { status: finalStatus },
+      });
+
+      await tx.activityLog.create({
+        data: {
+          type: 'PAYROLL',
+          action:
+            finalStatus === PayrollStatus.FAILED
+              ? 'PAYROLL FAILED'
+              : 'PAYROLL COMPLETED',
+          description:
+            finalStatus === PayrollStatus.FAILED
+              ? `Payroll processing finished with ${failedCount} failed payslip(s). Payroll marked as failed.`
+              : `All payslips processed for payroll. Payroll marked as completed.`,
+          companyId,
+        },
+      });
+
+      this.logger.log(
+        `All payslips processed. Payroll ${payrollId} marked as ${finalStatus}.`,
+      );
+    }
+  }
+
   private async handlePayslipFailure(
     payslip: {
       id: string;
+      payrollId: string;
       companyId: string;
       Employee?: { firstName: string; lastName: string } | null;
     },
@@ -72,6 +124,19 @@ export class PayslipsProcessingService extends WorkerHost {
     } catch (error) {
       this.logger.error(
         `Failed to send failure email for payslip ${payslip.id}`,
+        error,
+      );
+    }
+
+    // Check if all payslips for payroll are done, update payroll status if needed
+    try {
+      await this.checkAndSetPayrollStatus(
+        payslip.payrollId,
+        payslip.companyId,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to update payroll status for payslip failure ${payslip.id}`,
         error,
       );
     }
@@ -203,6 +268,9 @@ export class PayslipsProcessingService extends WorkerHost {
             employeeId: payslip.employeeId,
           },
         });
+
+        // 7. Check if this is the last pending payslip for the payroll and update payroll status (COMPLETED or FAILED)
+        await this.checkAndSetPayrollStatus(payslip.payrollId, payslip.companyId, tx);
       });
 
       this.logger.log(`Payslip processed and employee wallet credited successfully: ${payslipId}`);
