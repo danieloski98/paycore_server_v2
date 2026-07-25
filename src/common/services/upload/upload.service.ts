@@ -115,6 +115,9 @@ export class UploadService {
    * Get file information from Cloudinary
    */
   async getFileInfo(id: string) {
+    if (id.startsWith('https://')) {
+      return id;
+    }
     try {
       const result = await this.databaseService.file.findUnique({
         where: {
