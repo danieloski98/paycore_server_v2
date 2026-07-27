@@ -28,6 +28,7 @@ import { PayrollModule } from './modules/payroll/payroll.module';
 import { PaymentModule } from './modules/payment/payment.module';
 import { UploadModule } from './common/services/upload/upload.module';
 import { DepartmentModule } from './modules/department/department.module';
+import { WithrawalModule } from './modules/withrawal/withrawal.module';
 
 
 const logger = new Logger();
@@ -89,6 +90,7 @@ const logger = new Logger();
     PaymentModule,
     UploadModule,
     DepartmentModule,
+    WithrawalModule,
   ],
   controllers: [AppController],
   providers: [

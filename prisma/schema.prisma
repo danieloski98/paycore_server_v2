@@ -22,6 +22,8 @@ model BankDetails {
   isPrimary     Boolean   @default(false)
   Employee      Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   payslips      Payslip[]
+
+  withdrawalRequests WithdrawalRequest[]
 }
 
 model Company {
@@ -112,6 +114,8 @@ model Employee {
   Payslip        Payslip[]
   wallet         Wallet?
   payments       Payment[]
+
+  withdrawalRequests WithdrawalRequest[]
 }
 
 model Department {
@@ -281,6 +285,26 @@ model ActivityLog {
   entityId    String?
   actorId     String?
   createdAt   DateTime @default(now())
+}
+
+model WithdrawalRequest {
+  id          String                  @id @default(cuid())
+  employeeId  String
+  amount      Float
+  bankId      String
+  status      WithdrawalRequestStatus
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+  deletedAt   DateTime?
+  isDeleted   Boolean                 @default(false)
+  Employee    Employee                @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  bankDetails BankDetails             @relation(fields: [bankId], references: [id], onDelete: Cascade)
+}
+
+enum WithdrawalRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 enum WalletType {
