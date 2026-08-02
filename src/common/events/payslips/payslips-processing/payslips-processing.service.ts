@@ -188,9 +188,9 @@ export class PayslipsProcessingService extends WorkerHost {
         }),
       ]);
 
-      const totalEarnings = earnAgg._sum?.amount ?? 0;
-      const totalDeductions = dedAgg._sum?.amount ?? 0;
-      const payoutAmount = totalDeductions === 0 && totalEarnings === 0 ? payslip.basicSalary : payslip.basicSalary + (totalEarnings - totalDeductions);
+      // const totalEarnings = earnAgg._sum?.amount ?? 0;
+      // const totalDeductions = dedAgg._sum?.amount ?? 0;
+      const payoutAmount = payslip?.netSalary
 
       // check company wallet balance before proceeding
       const wallet = await this.prisma.wallet.findFirst({

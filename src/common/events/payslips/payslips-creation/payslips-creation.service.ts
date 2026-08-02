@@ -31,22 +31,81 @@ export class PayslipsCreationService {
         include: {
           BankDetails: true,
           Company: true,
+          Earning: {
+            where: { isDeleted: false },
+          },
+          Deduction: {
+            where: { isDeleted: false },
+          },
         },
       });
 
+      // get payroll-level earnings and deductions
+      const [payrollEarnings, payrollDeductions] = data?.payrollId
+        ? await Promise.all([
+            this.prismaService.earning.findMany({
+              where: {
+                payrollId: data.payrollId,
+                isDeleted: false,
+              },
+            }),
+            this.prismaService.deduction.findMany({
+              where: {
+                payrollId: data.payrollId,
+                isDeleted: false,
+              },
+            }),
+          ])
+        : [[], []];
 
       // prepare payslip data
       this.logger.debug('PREPARING PAYSLIP DATA');
-      const payslipData = employees.map((emp) => ({
-        employeeId: emp.id,
-        payrollId: data?.payrollId,
-        companyId: data.companyId,
-        basicSalary: emp.salary,
-        deductions: 0,
-        allowances: 0,
-        netSalary: 0,
-        bankId: emp.BankDetails.find((bank) => bank.isPrimary)!.id,
-      }));
+      const payslipData = employees.map((emp) => {
+        const employeeEarnings = emp.Earning || [];
+        const employeeDeductions = emp.Deduction || [];
+
+        const relevantPayrollEarnings = payrollEarnings.filter(
+          (pe) => !pe.employeeId || pe.employeeId === emp.id,
+        );
+        const relevantPayrollDeductions = payrollDeductions.filter(
+          (pd) => !pd.employeeId || pd.employeeId === emp.id,
+        );
+
+        const allEarningsMap = new Map<string, number>();
+        [...employeeEarnings, ...relevantPayrollEarnings].forEach((item) => {
+          allEarningsMap.set(item.id, item.amount);
+        });
+
+        const allDeductionsMap = new Map<string, number>();
+        [...employeeDeductions, ...relevantPayrollDeductions].forEach((item) => {
+          allDeductionsMap.set(item.id, item.amount);
+        });
+
+        const allowances = Array.from(allEarningsMap.values()).reduce(
+          (sum, amt) => sum + amt,
+          0,
+        );
+        const deductions = Array.from(allDeductionsMap.values()).reduce(
+          (sum, amt) => sum + amt,
+          0,
+        );
+        const basicSalary = emp.salary;
+        const netSalary = basicSalary + allowances - deductions;
+
+        const primaryBank =
+          emp.BankDetails.find((bank) => bank.isPrimary) || emp.BankDetails[0];
+
+        return {
+          employeeId: emp.id,
+          payrollId: data?.payrollId,
+          companyId: data.companyId,
+          basicSalary,
+          deductions,
+          allowances,
+          netSalary,
+          bankId: primaryBank?.id,
+        };
+      });
 
       // create first earning
       this.logger.debug('PREPARING EARNING DATA');
