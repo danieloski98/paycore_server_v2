@@ -29,6 +29,7 @@ import { PaymentModule } from './modules/payment/payment.module';
 import { UploadModule } from './common/services/upload/upload.module';
 import { DepartmentModule } from './modules/department/department.module';
 import { WithrawalModule } from './modules/withrawal/withrawal.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
 
 
 const logger = new Logger();
@@ -91,6 +92,7 @@ const logger = new Logger();
     UploadModule,
     DepartmentModule,
     WithrawalModule,
+    AnalyticsModule
   ],
   controllers: [AppController],
   providers: [

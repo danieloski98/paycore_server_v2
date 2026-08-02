@@ -292,7 +292,7 @@ model WithdrawalRequest {
   employeeId  String
   amount      Float
   bankId      String
-  status      WithdrawalRequestStatus
+  status      WithdrawalRequestStatus @default(PENDING)
   createdAt   DateTime                @default(now())
   updatedAt   DateTime                @updatedAt
   deletedAt   DateTime?
