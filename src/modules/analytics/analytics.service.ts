@@ -2,13 +2,13 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { ReturnType } from 'src/common/returnType';
 import { tryCatch } from 'bullmq';
-import { LeaveStatus, PayrollStatus, PayslipStatus } from 'generated/prisma/enums';
+import { LeaveStatus, PaymentStatus, PayrollStatus, PayslipStatus } from 'generated/prisma/enums';
 
 @Injectable()
 export class AnalyticsService {
   private readonly logger = new Logger(AnalyticsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async getCompanyAnalytics(companyId: string) {
     try {
@@ -256,24 +256,41 @@ export class AnalyticsService {
 
   async getEmployeeDashboardAnalytics(employeeId: string) {
     try {
-      // get the total paid payslip for the emloyee, there netpay, next paydate, bank account
-      const [totalPaidPayslip, netPay, bankAccount, totalLeaveRequests] = await Promise.all([
+      // get the total paid payslip for the employee, their netpay, next paydate, bank account, total leave requests, and total payments made to wallet
+      const [
+        totalPaidPayslip,
+        netPay,
+        bankAccount,
+        totalLeaveRequests,
+        totalPaymentsAgg,
+      ] = await Promise.all([
         this.prisma.payslip.count({
           where: { employeeId, isDeleted: false, status: PayslipStatus.PAID },
         }),
         this.prisma.employee.findFirst({
           where: { id: employeeId, isDeleted: false },
-          select: { salary: true,  },
+          select: { salary: true },
         }),
         this.prisma.bankDetails.findFirst({
-          where: { id: employeeId, isDeleted: false , isPrimary: true },
+          where: { id: employeeId, isDeleted: false, isPrimary: true },
         }),
         this.prisma.leave.count({
           where: {
             employeeId,
             isDeleted: false,
-          }
-        })
+          },
+        }),
+        this.prisma.payment.aggregate({
+          where: {
+            employeeId,
+            isDeleted: false,
+            status: PaymentStatus.COMPLETED,
+            companyId: { not: null },
+          },
+          _sum: {
+            amount: true,
+          },
+        }),
       ]);
 
       return new ReturnType({
@@ -284,10 +301,9 @@ export class AnalyticsService {
           netPay,
           bankAccount,
           totalLeaveRequests,
+          totalAmountPaidToWallet: totalPaymentsAgg._sum.amount ?? 0,
         },
       });
-
-      // get the 
     } catch (error) {
       this.logger.error('Error fetching employee dashboard analytics', error);
       throw error;
