@@ -22,7 +22,7 @@ import { NotificationService } from './notification.service';
 @Controller('notifications')
 @ApiBearerAuth()
 export class NotificationController {
-  constructor(private readonly notificationService: NotificationService) {}
+  constructor(private readonly notificationService: NotificationService) { }
 
   @Get('employee/:employeeId')
   @ApiOperation({
@@ -33,7 +33,7 @@ export class NotificationController {
     name: 'employeeId',
     description: 'The ID of the employee',
     type: 'string',
-    format: 'uuid',
+
   })
   @ApiQuery({
     name: 'skip',
@@ -80,7 +80,6 @@ export class NotificationController {
     name: 'companyId',
     description: 'The ID of the company',
     type: 'string',
-    format: 'uuid',
   })
   @ApiQuery({
     name: 'skip',
@@ -128,7 +127,6 @@ export class NotificationController {
     name: 'employeeId',
     description: 'The ID of the employee',
     type: 'string',
-    format: 'uuid',
   })
   @ApiResponse({
     status: 200,
@@ -159,7 +157,7 @@ export class NotificationController {
     name: 'companyId',
     description: 'The ID of the company',
     type: 'string',
-    format: 'uuid',
+
   })
   @ApiResponse({
     status: 200,
